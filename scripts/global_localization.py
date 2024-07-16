@@ -31,6 +31,8 @@ headless = False
 reverse_tf = False
 stack_cnt = 0
 stack_scan = None
+tf_prefix = ""
+target_frame = "camera_init" if tf_prefix=="" else tf_prefix + "/" + "camera_init"
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -147,7 +149,7 @@ def crop_global_map_in_FOV(global_map, pose_estimation, cur_odom):
 
 
 def global_localization(pose_estimation):
-    global global_map, cur_scan, cur_odom, T_map_to_odom, new_scan, initialized, reverse_tf
+    global global_map, cur_scan, cur_odom, T_map_to_odom, new_scan, initialized, reverse_tf, target_frame
 
 
     if not new_scan:
@@ -216,7 +218,7 @@ def global_localization(pose_estimation):
 
         static_transformStamped.header.stamp = cur_odom.header.stamp
         static_transformStamped.header.frame_id = 'map'
-        static_transformStamped.child_frame_id = 'camera_init'
+        static_transformStamped.child_frame_id = target_frame
 
         pos = tf.transformations.translation_from_matrix(T_map_to_odom)
         static_transformStamped.transform.translation = Vector3(*pos)
@@ -226,7 +228,7 @@ def global_localization(pose_estimation):
         rospy.loginfo("Map to Odom: pos: {}, euler: {} \n".format(xyz, euler))
 
         if reverse_tf:
-            static_transformStamped.header.frame_id = 'camera_init'
+            static_transformStamped.header.frame_id = target_frame
             static_transformStamped.child_frame_id = 'map'
             T_odom_to_map = tf.transformations.inverse_matrix(T_map_to_odom)
             pos = tf.transformations.translation_from_matrix(T_odom_to_map)
@@ -274,7 +276,8 @@ def cb_save_cur_scan(pc_msg):
     global headless
     global stack_scan
     global stack_cnt
-    pc_msg.header.frame_id = 'camera_init'
+    global target_frame
+    pc_msg.header.frame_id = target_frame
     pc_msg.header.stamp = rospy.Time().now()
 
     pc_msg.fields = [pc_msg.fields[0], pc_msg.fields[1], pc_msg.fields[2],
@@ -348,6 +351,8 @@ if __name__ == '__main__':
     oneshot = rospy.get_param("~oneshot", False)
     headless = rospy.get_param("~headless", False)
     reverse_tf = rospy.get_param("~reverse_tf", False)
+    tf_prefix = rospy.get_param("~tf_prefix", "")
+    target_frame = "camera_init" if tf_prefix=="" else tf_prefix + "/" + "camera_init"
 
     # get init frame offset from rosparam
     init_pos = Point()
